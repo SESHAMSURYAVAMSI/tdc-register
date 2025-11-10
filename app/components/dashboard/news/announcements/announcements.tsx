@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Announcement } from "@/app/types/news/announcements";
 import AddAnnouncement from "./addannouncement";
+
 import {
   Table,
   TableHeader,
@@ -11,6 +12,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -23,10 +25,13 @@ export default function Announcements({ data }: Props) {
   const [showSheet, setShowSheet] = useState(false);
   const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>(data);
 
+  const [selectedAnnouncement, setSelectedAnnouncement] =
+    useState<Announcement | null>(null);
+
   const filtered = useMemo(() => {
     return allAnnouncements.filter((item) =>
       Object.values(item).some((val) =>
-        val.toLowerCase().includes(search.toLowerCase())
+        String(val).toLowerCase().includes(search.toLowerCase())
       )
     );
   }, [search, allAnnouncements]);
@@ -62,14 +67,24 @@ export default function Announcements({ data }: Props) {
             <TableHead className="text-center">Action</TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
           {filtered.length > 0 ? (
             filtered.map((item, index) => (
               <TableRow key={index}>
                 <TableCell className="text-center">{item.title}</TableCell>
                 <TableCell className="text-center">{item.date}</TableCell>
-                <TableCell className="text-center text-blue-600 underline cursor-pointer">
-                  View
+
+                {/* ✅ View Button */}
+                <TableCell className="text-center">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-[#00694A] text-[#00694A] hover:bg-[#00694A] hover:text-white"
+                    onClick={() => setSelectedAnnouncement(item)}
+                  >
+                    View
+                  </Button>
                 </TableCell>
               </TableRow>
             ))
@@ -83,8 +98,25 @@ export default function Announcements({ data }: Props) {
         </TableBody>
       </Table>
 
-      {/* Sheet */}
-      <AddAnnouncement open={showSheet} onClose={() => setShowSheet(false)} onSubmit={handleAdd} />
+      {/* Details Section */}
+      {selectedAnnouncement && (
+        <div className="p-4 border-t bg-gray-50">
+          <h2 className="text-lg font-semibold text-[#00694A]">
+            {selectedAnnouncement.title}
+          </h2>
+
+          <p className="text-sm text-gray-600 mb-2">
+            Date: {selectedAnnouncement.date}
+          </p>
+        </div>
+      )}
+
+      {/* Add Announcement Sheet */}
+      <AddAnnouncement
+        open={showSheet}
+        onClose={() => setShowSheet(false)}
+        onSubmit={handleAdd}
+      />
     </div>
   );
 }

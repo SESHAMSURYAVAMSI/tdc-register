@@ -1,4 +1,4 @@
-import Events from "@/app/components/dashboard/news/events";
+import Events from "@/app/components/dashboard/news/events/events";
 import { EventRecord } from "@/app/types/news/events";
 
 const dummyData: EventRecord[] = [

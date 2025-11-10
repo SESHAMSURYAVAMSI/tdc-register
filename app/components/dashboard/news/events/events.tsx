@@ -13,6 +13,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import AddEvent from "@/app/components/dashboard/news/events/addevent";
 
 interface Props {
   data: EventRecord[];
@@ -24,13 +25,19 @@ export default function Events({ data }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
+  const [showSheet, setShowSheet] = useState(false);
+  const [allEvents, setAllEvents] = useState<EventRecord[]>(data);
+
+  // not needed anymore but keeping in case you add details later
+  // const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
+
   const filtered = useMemo(() => {
-    return data.filter((item) =>
+    return allEvents.filter((item) =>
       Object.values(item).some((val) =>
-        val.toLowerCase().includes(search.toLowerCase())
+        String(val).toLowerCase().includes(search.toLowerCase())
       )
     );
-  }, [data, search]);
+  }, [allEvents, search]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
 
@@ -39,10 +46,15 @@ export default function Events({ data }: Props) {
     return filtered.slice(start, start + ITEMS_PER_PAGE);
   }, [filtered, page]);
 
+  const handleAdd = (newEvent: EventRecord) => {
+    setAllEvents((prev) => [...prev, newEvent]);
+    setPage(1);
+  };
+
   return (
     <div className="rounded-md border bg-white shadow-md overflow-x-auto">
-      {/* Search */}
-      <div className="p-4 border-b">
+      {/* Top Controls */}
+      <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-4">
         <Input
           placeholder="Search by any field"
           className="w-full md:w-1/2"
@@ -52,6 +64,12 @@ export default function Events({ data }: Props) {
             setPage(1);
           }}
         />
+        <Button
+          className="bg-[#00694A] hover:bg-[#004d36] text-white"
+          onClick={() => setShowSheet(true)}
+        >
+          + Add Event
+        </Button>
       </div>
 
       {/* Table */}
@@ -66,6 +84,7 @@ export default function Events({ data }: Props) {
             <TableHead className="text-center">Website</TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
           {paginated.length > 0 ? (
             paginated.map((item, idx) => (
@@ -75,10 +94,16 @@ export default function Events({ data }: Props) {
                 <TableCell className="text-center">{item.endDate}</TableCell>
                 <TableCell className="text-center">{item.venue}</TableCell>
                 <TableCell className="text-center">{item.cmePoints}</TableCell>
-                <TableCell className="text-center text-blue-600 underline">
-                  <a href={item.website} target="_blank" rel="noopener noreferrer">
+
+                {/* ✅ Visit button instead of link */}
+                <TableCell className="text-center">
+                  <Button
+                    size="sm"
+                    className="bg-[#00694A] hover:bg-[#004d36] text-white"
+                    onClick={() => window.open(item.website, "_blank")}
+                  >
                     Visit
-                  </a>
+                  </Button>
                 </TableCell>
               </TableRow>
             ))
@@ -96,7 +121,7 @@ export default function Events({ data }: Props) {
       {totalPages > 1 && (
         <div className="flex justify-between items-center px-4 py-3 border-t">
           <p className="text-sm text-gray-600">
-            Showing {(page - 1) * ITEMS_PER_PAGE + 1} to{" "}
+            Showing {Math.min((page - 1) * ITEMS_PER_PAGE + 1, filtered.length)} to{" "}
             {Math.min(page * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} events
           </p>
           <div className="flex gap-2">
@@ -121,6 +146,13 @@ export default function Events({ data }: Props) {
           </div>
         </div>
       )}
+
+      {/* Add Event Sheet */}
+      <AddEvent
+        open={showSheet}
+        onClose={() => setShowSheet(false)}
+        onSubmit={handleAdd}
+      />
     </div>
   );
 }
