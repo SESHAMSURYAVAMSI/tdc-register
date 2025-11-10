@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 interface Props {
   data: TodayAppointmentRecord[];
@@ -27,7 +27,7 @@ export default function TodayAppointments({ data }: Props) {
   const filtered = useMemo(() => {
     return data.filter((item) =>
       Object.values(item).some((val) =>
-        val.toLowerCase().includes(search.toLowerCase())
+        String(val).toLowerCase().includes(search.toLowerCase())
       )
     );
   }, [data, search]);
@@ -39,10 +39,60 @@ export default function TodayAppointments({ data }: Props) {
     return filtered.slice(start, start + ITEMS_PER_PAGE);
   }, [filtered, page]);
 
+  // ---- CSV helpers ----
+  const escapeCSV = (value: unknown) => {
+    const str = String(value ?? "");
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const buildCSV = (rows: TodayAppointmentRecord[]) => {
+    const headers = [
+      "Application Number",
+      "Membership Number",
+      "Type",
+      "Name",
+      "Email",
+      "Mobile",
+      "Time & Date",
+      "Category",
+    ];
+    const lines = [
+      headers.join(","),
+      ...rows.map((r) =>
+        [
+          escapeCSV(r.applicationNumber),
+          escapeCSV(r.membershipNumber),
+          escapeCSV(r.type),
+          escapeCSV(r.name),
+          escapeCSV(r.email),
+          escapeCSV(r.mobile),
+          escapeCSV(r.timeAndDate),
+          escapeCSV(r.category),
+        ].join(",")
+      ),
+    ];
+    return "\uFEFF" + lines.join("\n");
+  };
+
+  const downloadCSV = () => {
+    const csv = buildCSV(filtered);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `today_appointments_${dateStamp}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="rounded-md border bg-white shadow-md overflow-x-auto">
-      {/* Search */}
-      <div className="p-4 border-b">
+      {/* Toolbar: Search + Download */}
+      <div className="p-4 border-b flex flex-col gap-3 md:flex-row md:items-center">
         <Input
           placeholder="Search by any field"
           className="w-full md:w-1/2"
@@ -52,6 +102,15 @@ export default function TodayAppointments({ data }: Props) {
             setPage(1);
           }}
         />
+        <div className="md:ml-auto">
+          <Button
+            onClick={downloadCSV}
+            className="bg-[#00694A] text-white hover:opacity-90 w-full md:w-auto"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download CSV
+          </Button>
+        </div>
       </div>
 
       {/* Table */}

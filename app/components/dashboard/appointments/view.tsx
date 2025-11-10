@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 interface Props {
   // The data prop now contains ALL appointments (past and upcoming)
@@ -24,33 +24,28 @@ const ITEMS_PER_PAGE = 10;
 export default function ViewAppointments({ data }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  // New state to manage the filter type
-  const [filterType, setFilterType] = useState<'all' | 'past' | 'upcoming'>('all');
+  const [filterType, setFilterType] = useState<"all" | "past" | "upcoming">("all");
 
   const filtered = useMemo(() => {
     const now = new Date();
-    
+
     // First, filter by the search term
     const searchFiltered = data.filter((item) =>
       Object.values(item).some((val) =>
-        val.toLowerCase().includes(search.toLowerCase())
+        String(val).toLowerCase().includes(search.toLowerCase())
       )
     );
 
     // Then, apply the time-based filter
-    if (filterType === 'all') {
+    if (filterType === "all") {
       return searchFiltered;
     }
 
     return searchFiltered.filter((item) => {
       const appointmentDate = new Date(item.timeAndDate);
-      if (filterType === 'past') {
-        return appointmentDate < now;
-      }
-      if (filterType === 'upcoming') {
-        return appointmentDate >= now;
-      }
-      return true; // Should not be reached, but good practice
+      if (filterType === "past") return appointmentDate < now;
+      if (filterType === "upcoming") return appointmentDate >= now;
+      return true;
     });
   }, [data, search, filterType]);
 
@@ -61,11 +56,60 @@ export default function ViewAppointments({ data }: Props) {
     return filtered.slice(start, start + ITEMS_PER_PAGE);
   }, [filtered, page]);
 
-  // Handler for filter buttons
-  const handleFilterChange = (type: 'all' | 'past' | 'upcoming') => {
+  const handleFilterChange = (type: "all" | "past" | "upcoming") => {
     setFilterType(type);
-    setPage(1); // Reset to page 1 on filter change
+    setPage(1);
   };
+
+  // ------- CSV Download -------
+  const escapeCSV = (val: unknown) => {
+    if (val === null || val === undefined) return "";
+    const str = String(val);
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+
+  const handleDownloadCSV = () => {
+    // Export ALL rows that match the current filters (not just the current page)
+    const rows = filtered.map((item) => [
+      item.applicationNumber,
+      item.membershipNumber,
+      item.type,
+      item.name,
+      item.email,
+      item.mobile,
+      item.timeAndDate,
+      item.category,
+    ]);
+
+    const headers = [
+      "Application Number",
+      "Membership Number",
+      "Type",
+      "Name",
+      "Email",
+      "Mobile",
+      "Time & Date",
+      "Category",
+    ];
+
+    const csv =
+      [headers, ...rows]
+        .map((row) => row.map(escapeCSV).join(","))
+        .join("\n") + "\n";
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = url;
+    a.download = `appointments_${filterType}_${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  // ----------------------------
 
   return (
     <div className="rounded-md border bg-white shadow-md overflow-x-auto">
@@ -80,29 +124,53 @@ export default function ViewAppointments({ data }: Props) {
             setPage(1);
           }}
         />
-        
+
         {/* Filter Buttons */}
         <div className="flex gap-2 w-full md:w-auto">
           <Button
-            variant={filterType === 'all' ? 'default' : 'outline'}
-            onClick={() => handleFilterChange('all')}
-            className={filterType === 'all' ? 'bg-[#00694A] text-white' : 'text-[#00694A] border-[#00694A] hover:bg-[#00694A] hover:text-white'}
+            variant={filterType === "all" ? "default" : "outline"}
+            onClick={() => handleFilterChange("all")}
+            className={
+              filterType === "all"
+                ? "bg-[#00694A] text-white"
+                : "text-[#00694A] border-[#00694A] hover:bg-[#00694A] hover:text-white"
+            }
           >
             All
           </Button>
           <Button
-            variant={filterType === 'past' ? 'default' : 'outline'}
-            onClick={() => handleFilterChange('past')}
-            className={filterType === 'past' ? 'bg-[#00694A] text-white' : 'text-[#00694A] border-[#00694A] hover:bg-[#00694A] hover:text-white'}
+            variant={filterType === "past" ? "default" : "outline"}
+            onClick={() => handleFilterChange("past")}
+            className={
+              filterType === "past"
+                ? "bg-[#00694A] text-white"
+                : "text-[#00694A] border-[#00694A] hover:bg-[#00694A] hover:text-white"
+            }
           >
             Past
           </Button>
           <Button
-            variant={filterType === 'upcoming' ? 'default' : 'outline'}
-            onClick={() => handleFilterChange('upcoming')}
-            className={filterType === 'upcoming' ? 'bg-[#00694A] text-white' : 'text-[#00694A] border-[#00694A] hover:bg-[#00694A] hover:text-white'}
+            variant={filterType === "upcoming" ? "default" : "outline"}
+            onClick={() => handleFilterChange("upcoming")}
+            className={
+              filterType === "upcoming"
+                ? "bg-[#00694A] text-white"
+                : "text-[#00694A] border-[#00694A] hover:bg-[#00694A] hover:text-white"
+            }
           >
             Upcoming
+          </Button>
+        </div>
+
+        {/* Download CSV */}
+        <div className="ml-auto flex">
+          <Button
+            onClick={handleDownloadCSV}
+            disabled={filtered.length === 0}
+            className="bg-[#00694A] text-white hover:opacity-90"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download CSV
           </Button>
         </div>
       </div>
@@ -116,7 +184,7 @@ export default function ViewAppointments({ data }: Props) {
             <TableHead className="text-center">Name</TableHead>
             <TableHead className="text-center">Email</TableHead>
             <TableHead className="text-center">Mobile</TableHead>
-            <TableHead className="text-center">Time & Date</TableHead>
+            <TableHead className="text-center">Time &amp; Date</TableHead>
             <TableHead className="text-center">Category</TableHead>
           </TableRow>
         </TableHeader>
@@ -137,7 +205,7 @@ export default function ViewAppointments({ data }: Props) {
           ) : (
             <TableRow>
               <TableCell colSpan={8} className="text-center py-6 text-gray-500">
-                No past appointments found.
+                No appointments found.
               </TableCell>
             </TableRow>
           )}
